@@ -2,7 +2,7 @@ package com.kardex.kardex.controller;
 
 import com.kardex.kardex.dto.product.CreateProductDto;
 import com.kardex.kardex.entity.Product;
-import com.kardex.kardex.services.category.ProductService;
+import com.kardex.kardex.services.product.ProductService;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;

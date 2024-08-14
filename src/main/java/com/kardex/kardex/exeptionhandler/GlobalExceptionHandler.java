@@ -1,6 +1,7 @@
 package com.kardex.kardex.exeptionhandler;
 
 import com.kardex.kardex.exception.KardexError;
+import org.springframework.http.HttpStatusCode;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.ControllerAdvice;
 import org.springframework.web.bind.annotation.ExceptionHandler;
@@ -19,4 +20,14 @@ public class GlobalExceptionHandler {
                         "error", Optional.ofNullable(error.getError()).orElse("")
                 ));
     }
+
+    @ExceptionHandler(Exception.class)
+    public ResponseEntity<Object> genericException(Exception error) {
+        return ResponseEntity.internalServerError()
+                .body(Map.of(
+                        "status", 500,
+                        "error", "Error en el servicio"
+                ));
+    }
+
 }

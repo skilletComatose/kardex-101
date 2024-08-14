@@ -5,11 +5,9 @@ import lombok.Getter;
 import lombok.NonNull;
 import org.springframework.http.HttpStatus;
 
-import java.io.Serializable;
-
 
 @Getter
-public class KardexError extends RuntimeException implements Serializable  {
+public class KardexError extends RuntimeException   {
     private final @NonNull HttpStatus status;
     private final String error;
     @Builder

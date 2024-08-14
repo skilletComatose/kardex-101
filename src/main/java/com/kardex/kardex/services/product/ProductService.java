@@ -1,4 +1,4 @@
-package com.kardex.kardex.services.category;
+package com.kardex.kardex.services.product;
 
 import com.kardex.kardex.dto.product.CreateProductDto;
 import com.kardex.kardex.entity.Product;
