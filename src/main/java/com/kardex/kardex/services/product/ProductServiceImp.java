@@ -21,6 +21,13 @@ import java.util.function.UnaryOperator;
 @RequiredArgsConstructor
 public class ProductServiceImp implements ProductService {
 
+    public static final String CATEGORY_NOT_FOUD = "No existe la categoría";
+    public static final String PRODUCT_ALREADY_EXISTS = "Este producto ya existe";
+    public static final String PRODUCT_NOT_FOUND = "Este producto no se encuentra registrado";
+    public static final String INTERNAL_SERVER_ERROR = "Error interno en el servicio";
+    public static final String CAN_NOT_REDUCE_PRODUCT = "No se puede reducir el stock, ya que no hay unidades disponibles";
+    public static final String REDUCE_ERROR = "No se puede reducir el stock, ya se supera la cantidad permitida";
+
     private final ProductRepository productRepository;
     private final CategoryRepository categoryRepository;
     private final ProductMapper productMapper;
@@ -59,7 +66,10 @@ public class ProductServiceImp implements ProductService {
 
     private Function<Integer, Category> findCategoryById() {
         return categoryId -> categoryRepository.findById(categoryId)
-                .orElseThrow(() -> KardexError.builder().status(HttpStatus.BAD_REQUEST).error("No existe la categoría").build());
+                .orElseThrow(() -> KardexError.builder()
+                        .status(HttpStatus.BAD_REQUEST)
+                        .error(CATEGORY_NOT_FOUD)
+                        .build());
     }
 
     private Function<Category, Product> mapToProduct(CreateProductDto createProductDto) {
@@ -83,7 +93,8 @@ public class ProductServiceImp implements ProductService {
         return product -> {
             Optional<Product> p = productRepository.findByName(product.getName());
             if (p.isPresent()) {
-                throw KardexError.builder().status(HttpStatus.NOT_FOUND).error("Este producto ya existe").build();
+                throw KardexError.builder().status(HttpStatus.CONFLICT)
+                        .error(PRODUCT_ALREADY_EXISTS).build();
             }
             return product;
         };
@@ -92,7 +103,10 @@ public class ProductServiceImp implements ProductService {
 
     private Function<Integer, Product> findProductById() {
         return productId -> productRepository.findById(productId)
-                .orElseThrow(() -> KardexError.builder().status(HttpStatus.NOT_FOUND).error("Este producto no se encuentra registrado").build());
+                .orElseThrow(() -> KardexError.builder()
+                        .status(HttpStatus.NOT_FOUND)
+                        .error(PRODUCT_NOT_FOUND)
+                        .build());
 
     }
 
@@ -100,18 +114,19 @@ public class ProductServiceImp implements ProductService {
     private UnaryOperator<Product> checkIfCanReduceStock(Integer quantity) {
         return product -> switch (product) {
 
-            case null -> throw KardexError.builder().status(HttpStatus.INTERNAL_SERVER_ERROR).error("Error interno en el servicio").build();
+            case null -> throw KardexError.builder().status(HttpStatus.INTERNAL_SERVER_ERROR).error(INTERNAL_SERVER_ERROR).build();
 
-            case Product p2 when p2.getStockQuantity() == null || p2.getStockQuantity() <= 0 ->
-                    throw KardexError.builder()
-                            .status(HttpStatus.CONFLICT)
-                            .error("No se puede reducir el stock, ya que no hay unidades disponibles")
+            case Product p2 when p2.getStockQuantity() == null || p2.getStockQuantity() <= 0
+                      ->    throw KardexError.builder()
+                            .status(HttpStatus.BAD_REQUEST)
+                            .error(CAN_NOT_REDUCE_PRODUCT)
                             .build();
 
-            case Product p2 when p2.getStockQuantity() - quantity < 0 -> throw KardexError.builder()
-                    .status(HttpStatus.CONFLICT)
-                    .error("No se puede reducir el stock, ya se supera la cantidad permitida")
-                    .build();
+            case Product p2 when p2.getStockQuantity() - quantity < 0
+                       -> throw KardexError.builder()
+                            .status(HttpStatus.BAD_REQUEST)
+                            .error(REDUCE_ERROR)
+                            .build();
 
             default -> product;
         };
