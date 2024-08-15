@@ -11,11 +11,10 @@ import java.time.LocalDateTime;
 
 @Entity
 @Table(name = "products")
-@Builder
+@Builder(toBuilder = true)
 @NoArgsConstructor
 @AllArgsConstructor
 @Getter
-@Setter
 public class Product {
 
     @Id
@@ -48,15 +47,4 @@ public class Product {
     @Column(name = "updated_at")
     @UpdateTimestamp
     private LocalDateTime updatedAt;
-
-
-    public Product addStock(Integer quantity) {
-        stockQuantity += quantity;
-        return this;
-    }
-
-    public Product reduceStock(Integer quantity) {
-        stockQuantity-= quantity;
-        return this;
-    }
 }

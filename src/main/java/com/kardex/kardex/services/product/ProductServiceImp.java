@@ -14,6 +14,8 @@ import org.springframework.stereotype.Service;
 import java.util.List;
 import java.util.Optional;
 import java.util.function.Function;
+import java.util.function.IntUnaryOperator;
+import java.util.function.UnaryOperator;
 
 @Service
 @RequiredArgsConstructor
@@ -31,91 +33,92 @@ public class ProductServiceImp implements ProductService {
     @Override
     public Product createProduct(CreateProductDto product) {
         return findCategoryById()
-                .andThen(category -> mapToProduct(product, category))
-                .andThen(this::checkIfProductNameAlreadyExits)
-                .andThen(this::saveProduct)
+                .andThen(mapToProduct(product))
+                .andThen(checkIfProductNameAlreadyExits())
+                .andThen(saveProduct())
                 .apply(product.getCategoryId());
     }
 
     @Override
     public Product addStock(Integer productId, Integer quantity) {
         return findProductById()
-                .andThen(product -> product.addStock(quantity))
-                .andThen(this::updateProduct)
-                .apply(productId);
+                .andThen(stockOperation(stock -> stock + quantity))
+                .andThen(updateProduct()).apply(productId);
     }
 
     @Override
     public Product reduceStock(Integer productId, Integer quantity) {
         return findProductById()
-                .andThen(product -> checkIfCanReduceStock(product, quantity))
-                .andThen(product -> product.reduceStock(quantity))
-                .andThen(this::updateProduct)
+                .andThen(checkIfCanReduceStock(quantity))
+                .andThen(stockOperation(stock -> stock - quantity))
+                .andThen(updateProduct())
                 .apply(productId);
     }
 
 
     private Function<Integer, Category> findCategoryById() {
         return categoryId -> categoryRepository.findById(categoryId)
-                .orElseThrow(() -> KardexError.builder()
-                        .status(HttpStatus.BAD_REQUEST)
-                        .error("No existe la categoría")
-                        .build());
+                .orElseThrow(() -> KardexError.builder().status(HttpStatus.BAD_REQUEST).error("No existe la categoría").build());
     }
 
-    private Product mapToProduct(CreateProductDto createProductDto, Category category) {
-        Product product = productMapper.mapToProduct(createProductDto);
-        product.setCategory(category);
-        return product;
+    private Function<Category, Product> mapToProduct(CreateProductDto createProductDto) {
+        return category -> productMapper.mapToProduct(createProductDto)
+                .toBuilder()
+                .category(category)
+                .build();
     }
 
-    private Product saveProduct(Product product) {
-        return productRepository.save(product);
+    private UnaryOperator<Product> stockOperation(IntUnaryOperator operation) {
+        return product -> product.toBuilder()
+                .stockQuantity(operation.applyAsInt(product.getStockQuantity()))
+                .build();
     }
 
-    private Product checkIfProductNameAlreadyExits(Product product) {
-        Optional<Product> productInDb = productRepository.findByName(product.getName());
-        if (productInDb.isPresent()) {
-            throw KardexError.builder()
-                    .status(HttpStatus.CONFLICT)
-                    .error("Este producto ya existe")
-                    .build();
-        }
-        return product;
+    private UnaryOperator<Product> saveProduct() {
+        return productRepository::save;
+    }
+
+    private UnaryOperator<Product> checkIfProductNameAlreadyExits() {
+        return product -> {
+            Optional<Product> p = productRepository.findByName(product.getName());
+            if (p.isPresent()) {
+                throw KardexError.builder().status(HttpStatus.NOT_FOUND).error("Este producto ya existe").build();
+            }
+            return product;
+        };
+
     }
 
     private Function<Integer, Product> findProductById() {
         return productId -> productRepository.findById(productId)
-                .orElseThrow(() -> KardexError.builder()
-                        .status(HttpStatus.NOT_FOUND)
-                        .error("Este producto no se encuentra registrado")
-                        .build());
+                .orElseThrow(() -> KardexError.builder().status(HttpStatus.NOT_FOUND).error("Este producto no se encuentra registrado").build());
 
     }
 
-    private Product checkIfCanReduceStock(Product product, Integer quantity) {
-        Integer stock = product.getStockQuantity();
-        if (stock <= 0) {
-            throw KardexError.builder()
-                    .status(HttpStatus.CONFLICT)
-                    .error("No se puede reducir el stock, ya que no hay unidades disponibles")
-                    .build();
-        }
 
-        int reducedStock = stock - quantity;
+    private UnaryOperator<Product> checkIfCanReduceStock(Integer quantity) {
+        return product -> switch (product) {
 
-        if (reducedStock < 0) {
-            throw KardexError.builder()
-                    .status(HttpStatus.CONFLICT)
-                    .error("No se puede reducir el stock, ya se supera la cantidad permitida")
-                    .build();
-        }
-        return product;
+            case null -> throw KardexError.builder().status(HttpStatus.INTERNAL_SERVER_ERROR).error("Error interno en el servicio").build();
+
+            case Product p2 when p2.getStockQuantity() == null || p2.getStockQuantity() <= 0 ->
+                    throw KardexError.builder()
+                            .status(HttpStatus.CONFLICT)
+                            .error("No se puede reducir el stock, ya que no hay unidades disponibles")
+                            .build();
+
+            case Product p2 when p2.getStockQuantity() - quantity < 0 ->
+                    throw KardexError.builder()
+                            .status(HttpStatus.CONFLICT)
+                            .error("No se puede reducir el stock, ya se supera la cantidad permitida")
+                            .build();
+
+            default -> product;
+        };
     }
 
-
-    private Product updateProduct(Product product) {
-        return productRepository.save(product);
+    private UnaryOperator<Product> updateProduct() {
+        return productRepository::save;
     }
 
 
