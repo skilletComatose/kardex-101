@@ -1,4 +1,4 @@
-package com.kardex.kardex.exceptionhandler.aop;
+package com.kardex.kardex.aop;
 
 import com.kardex.kardex.exception.KardexError;
 import lombok.extern.log4j.Log4j2;

@@ -1,11 +1,11 @@
 package com.kardex.kardex.exceptionhandler;
 
 import com.kardex.kardex.exception.KardexError;
-import lombok.extern.log4j.Log4j2;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.annotation.ControllerAdvice;
 import org.springframework.web.bind.annotation.ExceptionHandler;
+import org.springframework.web.method.annotation.MethodArgumentTypeMismatchException;
 import org.springframework.web.servlet.resource.NoResourceFoundException;
 
 @ControllerAdvice
@@ -34,8 +34,18 @@ public class GlobalExceptionHandler {
     }
 
     @ExceptionHandler(NoResourceFoundException.class)
-    public ResponseEntity<Object> handleMethodArgumentNotValidException(NoResourceFoundException error) {
+    public ResponseEntity<Object> handleNoResourceFoundException(NoResourceFoundException error) {
         return ResponseEntity.badRequest()
                 .body(ErrorResponse.noResourceFound(NO_RESOURCE_FOUND));
+    }
+
+    @ExceptionHandler(MethodArgumentTypeMismatchException.class)
+    public ResponseEntity<Object> handleMethodArgumentTypeMismatchException(MethodArgumentTypeMismatchException error) {
+        return ResponseEntity.badRequest()
+                .body(ErrorResponse.of(
+                        400,
+                        REQUEST_BODY_ERROR,
+                        new FieldError(error.getName(), "Formato incorrecto")
+                ));
     }
 }
