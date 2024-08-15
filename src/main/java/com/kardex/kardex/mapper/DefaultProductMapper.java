@@ -10,12 +10,12 @@ public class DefaultProductMapper implements ProductMapper {
     @Override
     public Product mapToProduct(CreateProductDto product) {
         return Product.builder()
-                .name(product.getName())
-                .description(product.getDescription())
-                .price(product.getPrice())
-                .stockQuantity(product.getStockQuantity())
-                .imageUrl(product.getImageUrl())
-                .category(Category.builder().categoryId(product.getCategoryId()).build())
+                .name(product.name())
+                .description(product.description())
+                .price(product.price())
+                .stockQuantity(product.stockQuantity())
+                .imageUrl(product.imageUrl())
+                .category(Category.builder().categoryId(product.categoryId()).build())
                 .build();
     }
 }

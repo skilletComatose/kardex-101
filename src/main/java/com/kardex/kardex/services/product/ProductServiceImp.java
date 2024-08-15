@@ -36,14 +36,15 @@ public class ProductServiceImp implements ProductService {
                 .andThen(mapToProduct(product))
                 .andThen(checkIfProductNameAlreadyExits())
                 .andThen(saveProduct())
-                .apply(product.getCategoryId());
+                .apply(product.categoryId());
     }
 
     @Override
     public Product addStock(Integer productId, Integer quantity) {
         return findProductById()
                 .andThen(stockOperation(stock -> stock + quantity))
-                .andThen(updateProduct()).apply(productId);
+                .andThen(updateProduct())
+                .apply(productId);
     }
 
     @Override
@@ -107,11 +108,10 @@ public class ProductServiceImp implements ProductService {
                             .error("No se puede reducir el stock, ya que no hay unidades disponibles")
                             .build();
 
-            case Product p2 when p2.getStockQuantity() - quantity < 0 ->
-                    throw KardexError.builder()
-                            .status(HttpStatus.CONFLICT)
-                            .error("No se puede reducir el stock, ya se supera la cantidad permitida")
-                            .build();
+            case Product p2 when p2.getStockQuantity() - quantity < 0 -> throw KardexError.builder()
+                    .status(HttpStatus.CONFLICT)
+                    .error("No se puede reducir el stock, ya se supera la cantidad permitida")
+                    .build();
 
             default -> product;
         };
