@@ -15,18 +15,17 @@ import java.util.List;
 import java.util.Optional;
 import java.util.function.Function;
 import java.util.function.IntUnaryOperator;
-import java.util.function.UnaryOperator;
+
+import static com.kardex.kardex.services.product.ProductBusinessConstraint.*;
 
 @Service
 @RequiredArgsConstructor
 public class ProductServiceImp implements ProductService {
 
     public static final String CATEGORY_NOT_FOUD = "No existe la categoría";
-    public static final String PRODUCT_ALREADY_EXISTS = "Este producto ya existe";
-    public static final String PRODUCT_NOT_FOUND = "Este producto no se encuentra registrado";
+
     public static final String INTERNAL_SERVER_ERROR = "Error interno en el servicio";
-    public static final String CAN_NOT_REDUCE_PRODUCT = "No se puede reducir el stock, ya que no hay unidades disponibles";
-    public static final String REDUCE_ERROR = "No se puede reducir el stock, ya se supera la cantidad permitida";
+
 
     private final ProductRepository productRepository;
     private final CategoryRepository categoryRepository;
@@ -79,17 +78,17 @@ public class ProductServiceImp implements ProductService {
                 .build();
     }
 
-    private UnaryOperator<Product> stockOperation(IntUnaryOperator operation) {
+    private UnaryProductOperator stockOperation(IntUnaryOperator operation) {
         return product -> product.toBuilder()
                 .stockQuantity(operation.applyAsInt(product.getStockQuantity()))
                 .build();
     }
 
-    private UnaryOperator<Product> saveProduct() {
+    private UnaryProductOperator saveProduct() {
         return productRepository::save;
     }
 
-    private UnaryOperator<Product> checkIfProductNameAlreadyExits() {
+    private UnaryProductOperator checkIfProductNameAlreadyExits() {
         return product -> {
             Optional<Product> p = productRepository.findByName(product.getName());
             if (p.isPresent()) {
@@ -111,28 +110,15 @@ public class ProductServiceImp implements ProductService {
     }
 
 
-    private UnaryOperator<Product> checkIfCanReduceStock(Integer quantity) {
-        return product -> switch (product) {
+    private UnaryProductOperator checkIfCanReduceStock(Integer quantity) {
+        return product -> ProductBusinessConstraint.notNull()
+                        .thenTest(ProductBusinessConstraint.validStock())
+                        .thenTest(ProductBusinessConstraint.canReduceStock(quantity))
+                        .test(product);
 
-            case null -> throw KardexError.builder().status(HttpStatus.INTERNAL_SERVER_ERROR).error(INTERNAL_SERVER_ERROR).build();
-
-            case Product p2 when p2.getStockQuantity() == null || p2.getStockQuantity() <= 0
-                      ->    throw KardexError.builder()
-                            .status(HttpStatus.BAD_REQUEST)
-                            .error(CAN_NOT_REDUCE_PRODUCT)
-                            .build();
-
-            case Product p2 when p2.getStockQuantity() - quantity < 0
-                       -> throw KardexError.builder()
-                            .status(HttpStatus.BAD_REQUEST)
-                            .error(REDUCE_ERROR)
-                            .build();
-
-            default -> product;
-        };
     }
 
-    private UnaryOperator<Product> updateProduct() {
+    private UnaryProductOperator updateProduct() {
         return productRepository::save;
     }
 
